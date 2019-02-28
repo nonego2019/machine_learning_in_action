@@ -8,6 +8,7 @@ Created on Fri Feb 22 09:24:55 2019
 import numpy as np
 import pandas as pd
 import operator
+from os import listdir
 
 
 def classify0(inX,dataSet,labels,k):
@@ -86,6 +87,39 @@ def classifyPerson():
     inArr = np.array([ffMiles,percentTats,iceCream])
     classifierResult=classify0((inArr-minVals)/ranges,normMat,datingLabels,3)
     print("You will probably like this person:", resultList[classifierResult-1])
+   
+def img2vector(filename):
+    returnVect = np.zeros((1,1024))
+    df = pd.read_table(filename,header=None)
+    for i in range(32):
+        returnVect[0,i*32:32*(i+1)]=np.array([df[i:i+1].values[0][0][j] for j in range(32)])
+    return returnVect
+
+def handwritingClassTest(k):
+    hwLabels = []
+    traingFileList = listdir('trainingDigits')
+    mTrain = len(traingFileList)
+    trainingMat = np.zeros((mTrain,1024))
+    for i in range(mTrain):
+        fileNameStr = traingFileList[i]
+        classNumStr = fileNameStr[0:1]
+        hwLabels.append(classNumStr)
+        trainingMat[i,:] = img2vector('trainingDigits/%s' % fileNameStr)
+    testFileList = listdir('testDigits')
+    mTest = len(testFileList)
+    errorCount = 0
+    for i in range(mTest):
+        fileNameStr = testFileList[i]
+        classNumStr = fileNameStr[0:1]
+        vectorUnderTest = img2vector('testDigits/%s' % fileNameStr)
+        classifierResult = classify0(vectorUnderTest,trainingMat,hwLabels,k)
+        print("the classifier came back with: %s,the real answer is: %s" %(classifierResult,classNumStr))
+        if (classifierResult != classNumStr):
+            errorCount += 1
+    print("\nthe total number of errors is: %d" % errorCount)
+    print("\nthe total error rate is:%f"% (errorCount/float(mTest)))
+
+        
     
     
     
