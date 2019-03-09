@@ -8,6 +8,9 @@ Created on Tue Mar  5 19:47:06 2019
 import numpy as np
 import re
 import random
+import operator
+import feedparser
+
 
 def loadDataSet():
     postingList=[['my', 'dog', 'has', 'flea', 'problems', 'help', 'please'],                #切分的词条
@@ -133,6 +136,74 @@ def spamTest():
         if classifyNB(np.array(wordVector),p0V,p1V,pSpam)!=classList[docIndex]:
             errorCount += 1
     print('错误率是',errorCount/len(testSet))
+    
+def calcMostFreq(vocabList,fullText):
+    freqDict = {}
+    for token in vocabList:
+        freqDict[token] = fullText.count(token)
+    sortedFreq = sorted(freqDict.items(),key = operator.itemgetter(1),reverse=True);
+    return sortedFreq[:30]
+
+def localWord(feed1,feed0):
+    docList = []
+    classList = []
+    fullText = []
+    minLen = min(len(feed1['entries']),len(feed0['entries']))
+    for i in range(minLen):
+        wordList = textParse(feed1['entries'][i]['summary'])
+        docList.append(wordList)
+        fullText.extend(wordList)
+        classList.append(1)
+        wordList = textParse(feed0['entries'][i]['summary'])
+        docList.append(wordList)
+        fullText.extend(wordList)
+        classList.append(0)
+    vocabList = createVocabList(docList)
+    top30Words = calcMostFreq(vocabList,fullText)
+    for pairW in top30Words:
+        if pairW in vocabList:
+            vocabList.remove(pairW[0])
+    trainingSet = list(range(2*minLen))
+    testSet = []
+    for i in range(int(minLen/10)):            #生产测试集、训练集在docList中的索引
+        randIndex = random.randint(0,len(trainingSet)-1)
+        testSet.append(trainingSet[randIndex])
+        del(trainingSet[randIndex])
+    trainMat = []
+    trainClasses = []
+    
+    for docIndex in trainingSet:
+        trainMat.append(bagOfWords2VecMN(vocabList,docList[docIndex]))
+        trainClasses.append(classList[docIndex])
+    p0V,p1V,pSpam = trainNB0(np.array(trainMat),np.array(trainClasses))
+    errorCount = 0
+    for docIndex in testSet:
+        wordVector = bagOfWords2VecMN(vocabList,docList[docIndex])
+        if classifyNB(np.array(wordVector),p0V,p1V,pSpam)!=classList[docIndex]:
+            errorCount += 1
+    print('错误率是',errorCount/len(testSet))
+    return vocabList,p0V,p1V
+
+def getTopWords(ny,sf):
+    vocabList,p0V,p1V = localWord(ny,sf)
+    topNY=[]
+    topSF=[]
+    for i in range(len(p0V)):
+        if p0V[i]>-6.0:
+            topNY.append((vocabList[i],p0V[i]))
+    for i in range(len(p1V)):
+        if p1V[i]>-6.0:
+            topSF.append((vocabList[i],p1V[i]))     
+    sortedSF = sorted(topSF,key=lambda pair:pair[1],reverse=True)   
+    
+    print ("SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**")
+    for item in sortedSF:
+        print(item[0],item[1])
+    sortedNY = sorted(topNY,key=lambda pair:pair[1],reverse=True)   
+    
+    print ("SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**SF**")
+    for item in sortedNY:
+        print(item[0],item[1])
             
         
         
